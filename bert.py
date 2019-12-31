@@ -4,14 +4,15 @@ import tensorflow_hub as hub
 import os
 import re
 import numpy as np
-from bert.tokenization import FullTokenizer
+#import bert
+#from bert.tokenization import FullTokenizer
 from tqdm import tqdm
 from tensorflow.keras import backend as K
 
-# Initialize session
-sess = tf.Session()
+
 
 # https://towardsdatascience.com/bert-in-keras-with-tensorflow-hub-76bcbc9417b
+# https://medium.com/@NvidiaAI/how-to-train-bert-from-scratch-on-gpus-a9603b0cb60e
 # Load all files from a directory in a DataFrame.
 def load_directory_data(directory):
     data = {}
@@ -101,7 +102,7 @@ def convert_single_example(tokenizer, example, max_seq_length=256):
 
     tokens_a = tokenizer.tokenize(example.text_a)
     if len(tokens_a) > max_seq_length - 2:
-        tokens_a = tokens_a[0 : (max_seq_length - 2)]
+        tokens_a = tokens_a[0: (max_seq_length - 2)]
 
     tokens = []
     segment_ids = []
@@ -164,11 +165,11 @@ def convert_text_to_examples(texts, labels):
 
 class BertLayer(tf.keras.layers.Layer):
     def __init__(
-        self,
-        n_fine_tune_layers=10,
-        pooling="mean",
-        bert_path="https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1",
-        **kwargs,
+            self,
+            n_fine_tune_layers=10,
+            pooling="mean",
+            bert_path="https://tfhub.dev/google/bert_uncased_L-12_H-768_A-12/1",
+            **kwargs,
     ):
         self.n_fine_tune_layers = n_fine_tune_layers
         self.trainable = True
@@ -226,7 +227,7 @@ class BertLayer(tf.keras.layers.Layer):
 
         super(BertLayer, self).build(input_shape)
 
-    def (self, inputs):
+    def train(self, inputs):
         inputs = [K.cast(x, dtype="int32") for x in inputs]
         input_ids, input_mask, segment_ids = inputs
         bert_inputs = dict(
@@ -243,7 +244,7 @@ class BertLayer(tf.keras.layers.Layer):
 
             mul_mask = lambda x, m: x * tf.expand_dims(m, axis=-1)
             masked_reduce_mean = lambda x, m: tf.reduce_sum(mul_mask(x, m), axis=1) / (
-                    tf.reduce_sum(m, axis=1, keepdims=True) + 1e-10)
+                tf.reduce_sum(m, axis=1, keepdims=True) + 1e-10)
             input_mask = tf.cast(input_mask, tf.float32)
             pooled = masked_reduce_mean(result, input_mask)
         else:
@@ -339,6 +340,30 @@ def main():
         batch_size=32,
     )
 
+import json
+import pickle
+def load_qa_dataset():
+
+    with open(
+            './dataset/simplified-nq-train.jsonl') as json_file:
+        json_train_records = []
+        for i,line in enumerate(json_file):
+            data = json.loads(line)
+            json_train_records.append(data)
+            if i==20000:
+                break
+        pickle.dump(json_train_records,open("train.pkl","wb"))
+
+    with open(
+            './dataset/simplified-nq-test.jsonl') as json_file:
+        json_test_records = []
+        for i,line in enumerate(json_file):
+            data = json.loads(line)
+            json_test_records.append(data)
+            if i==1000:
+                break
+        pickle.dump(json_test_records, open("test.pkl","wb"))
+
 
 if __name__ == "__main__":
-    main()
+    load_qa_dataset()
