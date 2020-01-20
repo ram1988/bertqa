@@ -364,6 +364,48 @@ def load_qa_dataset():
                 break
         pickle.dump(json_test_records, open("test.pkl","wb"))
 
+def read_new():
+
+    with open(
+            './train.pkl',"rb") as json_file:
+        jsonobj = pickle.load(json_file)
+        print(jsonobj[0].keys())
+
+def convert_each_rcd_to_squad_format(record):
+    converted_dataset = {}
+    context = record["document_text"]
+    converted_dataset["title"] = context.split(" ")[0:1]
+    converted_dataset["paragraphs"] = []
+    questions = {}
+    questions["qas"] = []
+    question_list = []
+    question = {}
+    question["question"] = record["question_text"]
+    answers = []
+    for annotation in record["annotations"]:
+        answer = {}
+        if "long_answer" in annotation and len(annotation["long_answer"].keys())!=0:
+            long_answer_record = prepare_answer_record(annotation["long_answer"], context)
+            answers.append(long_answer_record)
+        if "short_answers" in annotation and len(annotation["short_answers"])!=0:
+            for short_answer in short_answers:
+                short_answer_record = prepare_answer_record(short_answer, context)
+                answers.append(short_answer_record)
+    question["answers"] = answers
+    question["is_impossible"] = False
+    question_list.append(question)
+    questions["qas"].append(question_list)
+    questions["context"] = context
+    converted_dataset["paragraphs"].append(questions)
+    return converted_dataset
+
+def prepare_answer_record(answer_obj, document_text):
+    answer_start = answer_obj["start_token"]
+    answer_end = answer_obj["end_token"]
+    text = document_text[answer_start:answer_end]
+    answer_start = long_answer_start
+    return {"text": text, "answer_start": answer_start}
 
 if __name__ == "__main__":
-    load_qa_dataset()
+    read_new()
+    # https://medium.com/datadriveninvestor/extending-google-bert-as-question-and-answering-model-and-chatbot-e3e7b47b721a
